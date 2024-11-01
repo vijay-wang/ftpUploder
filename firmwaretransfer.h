@@ -3,6 +3,8 @@
 
 #include <QDialog>
 #include <QSettings>
+#include <QThread>
+#include <curl/curl.h>
 
 #ifdef QT_DEBUG
 #define CONFIG_FILE "C:\\Users\\ww107\\Desktop\\share\\Upgrade\\config.ini"
@@ -27,6 +29,9 @@ public:
 	FirmwareTransfer(QWidget *parent = nullptr);
 	~FirmwareTransfer();
 
+signals:
+	void requestShowMessage(const QString &title, const QString &message);
+
 private slots:
 
 	void on_btnBrowse_clicked();
@@ -35,8 +40,14 @@ private slots:
 
 	void on_btnUpgrade_clicked();
 
+	void showMessage(const QString title, const QString message);
+
 private:
+	bool uploadFileToFTP(const QString localFilePath, const QString ftpUrl, const QString username, const QString password);
 	Ui::FirmwareTransfer *ui;
 	QSettings *configFile;
+	QThread *uploadThread = nullptr;
+	void upload_thread_cb();
+	void startUpload(void);
 };
 #endif // FIRMWARETRANSFER_H

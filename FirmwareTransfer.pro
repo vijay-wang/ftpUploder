@@ -15,6 +15,11 @@ SOURCES += \
 HEADERS += \
     firmwaretransfer.h
 
+INCLUDEPATH += curl-8.10.1_7-win64-mingw/curl-8.10.1_7-win64-mingw/include/
+
+LIBS += -LC:/Users/ww107/Documents/qt/FirmwareTransfer/curl-8.10.1_7-win64-mingw/curl-8.10.1_7-win64-mingw/lib libcurl
+LIBS += -LC:/Users/ww107/Documents/qt/FirmwareTransfer//curl-8.10.1_7-win64-mingw/curl-8.10.1_7-win64-mingw/bin -lcurl-x64
+
 FORMS += \
     firmwaretransfer.ui
 
