@@ -2,6 +2,7 @@
 #define FIRMWARETRANSFER_H
 
 #include <QDialog>
+#include <QProgressDialog>
 #include <QSettings>
 #include <QThread>
 #include <curl/curl.h>
@@ -28,9 +29,11 @@ class FirmwareTransfer : public QDialog
 public:
 	FirmwareTransfer(QWidget *parent = nullptr);
 	~FirmwareTransfer();
+	friend int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
 signals:
 	void requestShowMessage(const QString &title, const QString &message);
+	void requestUpdateProgress(float progress);
 
 private slots:
 
@@ -42,6 +45,8 @@ private slots:
 
 	void showMessage(const QString title, const QString message);
 
+	void updateProgress(float progress);
+
 private:
 	bool uploadFileToFTP(const QString localFilePath, const QString ftpUrl, const QString username, const QString password);
 	Ui::FirmwareTransfer *ui;
@@ -49,5 +54,6 @@ private:
 	QThread *uploadThread = nullptr;
 	void upload_thread_cb();
 	void startUpload(void);
+	QProgressDialog *progressDialog;
 };
 #endif // FIRMWARETRANSFER_H

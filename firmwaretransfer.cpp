@@ -15,11 +15,13 @@ FirmwareTransfer::FirmwareTransfer(QWidget *parent)
 	QString path = configFile->value(FILE_SECTION_NAME"path").toString();
 	ui->lineEditIP->setText(ip);
 	ui->lineEditPath->setText(path);
+	progressDialog = new QProgressDialog("Progress", "Cancel", 0, 100);
 	connect(this, &FirmwareTransfer::requestShowMessage, this, &FirmwareTransfer::showMessage);
 }
 
 FirmwareTransfer::~FirmwareTransfer()
 {
+	delete progressDialog;
 	if (uploadThread && uploadThread->isRunning()) {
 		uploadThread->quit();
 		uploadThread->wait();
@@ -52,6 +54,18 @@ size_t read_callback(void *ptr, size_t size, size_t nmemb, void *stream) {
 	return retcode;
 }
 
+// 进度回调函数
+int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+	if (ultotal > 0) { // 如果总大小已知
+		double progress = (double)ulnow / (double)ultotal * 100.0;
+		printf("\rTransfer file progress: %.2f %%", progress);
+		// emit FirmwareTransfer::requestUpdateProgress(float progress);
+		progressDialog->setValue(progress);
+		fflush(stdout);
+	}
+	return 0; // 返回0表示继续传输
+}
+
 bool FirmwareTransfer::uploadFileToFTP(const QString localFilePath, const QString ftpUrl, const QString username, const QString password) {
 	static bool initialized = false;
 	if (!initialized) {
@@ -70,6 +84,10 @@ bool FirmwareTransfer::uploadFileToFTP(const QString localFilePath, const QStrin
 	QFileInfo fileInfo(localFilePath);  // 获取文件信息
 	curl = curl_easy_init();
 	if(curl) {
+		progressDialog->setWindowModality(Qt::WindowModal);  // 设置模态对话框，防止其他窗口操作
+		progressDialog->setWindowTitle("Progress");
+		progressDialog->setMinimumDuration(0);  // 立即显示对话框
+
 		std::string ftpUrlStr = ftpUrl.toStdString();
 		std::string userPwdStr = QString("%1:%2").arg(username, password).toStdString();
 
@@ -82,6 +100,10 @@ bool FirmwareTransfer::uploadFileToFTP(const QString localFilePath, const QStrin
 		curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
 		curl_easy_setopt(curl, CURLOPT_READDATA, file);
 		curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(fileInfo.size()));
+
+		// 设置进度回调函数
+		curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L); // 启用进度显示
 
 		// 执行上传操作
 		res = curl_easy_perform(curl);
