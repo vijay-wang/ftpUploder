@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include <QIcon>
 
 int main(int argc, char *argv[])
 {
@@ -18,6 +19,8 @@ int main(int argc, char *argv[])
 		}
 	}
 	FirmwareTransfer w;
+	QIcon icon("icon.png");
+	w.setWindowIcon(icon);
 	w.show();
 	return a.exec();
 }
