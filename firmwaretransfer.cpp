@@ -121,9 +121,12 @@ bool FirmwareTransfer::uploadFileToFTP(const QString localFilePath, const QStrin
 	return (res == CURLE_OK);
 }
 
-void FirmwareTransfer::showMessage(const QString title, const QString message)
+void FirmwareTransfer::showMessage(const QString type, const QString title, const QString message)
 {
-	QMessageBox::information(this, title, message);
+	if (type == "infomation")
+		QMessageBox::information(this, title, message);
+	else if (type == "warning")
+		QMessageBox::warning(this, title, message);
 }
 
 void FirmwareTransfer::startUpload(void)
@@ -133,16 +136,6 @@ void FirmwareTransfer::startUpload(void)
 	progressThread = QThread::create([this]() { this->progress_thread_cb(); });
 	progressThread->start();
 
-	connect(uploadThread, &QThread::finished, this, [this]() {
-		qDebug() << "uploadThread finished. isRunning:" << uploadThread->isRunning();
-	});
-
-	connect(progressThread, &QThread::finished, this, [this]() {
-		uploadThread->wait();  // 确保线程完全结束
-		progressThread->wait();  // 确保线程完全结束
-		qDebug() << "progressThread finished. isRunning:" << progressThread->isRunning();
-		this->setEnabled(true);
-	});
 }
 
 void FirmwareTransfer::upload_thread_cb()
@@ -155,37 +148,53 @@ void FirmwareTransfer::upload_thread_cb()
 	qDebug() << local_path << "\n";
 	bool ret = uploadFileToFTP(local_path, ftpUrl, "root", "unit123");
 	if (!ret)
-		emit requestShowMessage("ERROR", "upload firmware failed");
+		emit requestShowMessage("warning", "ERROR", "Upload firmware failed");
+	else
+		emit requestShowMessage("infomation", "infomation", "Please reboot the device to complete the upgrade");
+	uploadProgress = 0;
 }
 
 void FirmwareTransfer::progress_thread_cb()
 {
-	QProgressDialog progressDialog(this);
-	// progressDialog.setMinimumWidth(300);               // 设置最小宽度
-	// progressDialog.setWindowModality(Qt::NonModal);    // 非模态，其它窗口正常交互  Qt::WindowModal 模态
-	progressDialog.setWindowModality(Qt::WindowModal);    // 非模态，其它窗口正常交互  Qt::WindowModal 模态
-	progressDialog.setMinimumDuration(0);              // 等待0秒后显示
-	progressDialog.setWindowTitle(tr("progress"));      // 标题名
-	progressDialog.setLabelText(tr("Upload firmware"));        // 标签的
-	// progressDialog.setCancelButtonText(tr("不读了"));   // 取消按钮
-	progressDialog.setRange(0, 100);
+	progressDialog = new QProgressDialog(this);
+	progressDialog->setMinimumWidth(300);               	// 设置最小宽度
+	progressDialog->setMaximumWidth(300);               	// 设置最小宽度
+	// progressDialog.setWindowModality(Qt::NonModal);	// 非模态，其它窗口正常交互  Qt::WindowModal 模态
+	progressDialog->setWindowModality(Qt::WindowModal);	// 非模态，其它窗口正常交互  Qt::WindowModal 模态
+	progressDialog->setMinimumDuration(0);          	// 等待0秒后显示
+	progressDialog->setWindowTitle(tr("Progress"));      	// 标题名
+	progressDialog->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+	progressDialog->setLabelText(tr("Upload Progress"));    // 标签的
+	// progressDialog.setCancelButtonText(tr("不读了"));   	// 取消按钮
+	progressDialog->setCancelButton(nullptr);   		// 不显示按钮
+	progressDialog->setRange(0, 100);
 
+	connect(this, &FirmwareTransfer::rUpdateProgress, this, &FirmwareTransfer::updateProgress);
 	while (uploadThread->isRunning()) {
-		progressDialog.setValue(uploadProgress);
+		emit this->rUpdateProgress(uploadProgress);
 		if (uploadProgress == 100)
 			break;
 		Sleep(50);
 	}
-
-	// uploadThread->wait();
-	// progressDialog.reset();
-	printf("exit \n");
-	fflush(stdout);
 }
 
 void FirmwareTransfer::on_btnUpgrade_clicked()
 {
 	this->setEnabled(false);
 	startUpload();
+	connect(uploadThread, &QThread::finished, this, [this]() {
+		qDebug() << "uploadThread finished. isRunning:" << uploadThread->isRunning();
+	});
+
+	connect(progressThread, &QThread::finished, this, [this]() {
+		uploadThread->wait();  // 确保线程完全结束
+		progressThread->wait();  // 确保线程完全结束
+		qDebug() << "progressThread finished. isRunning:" << progressThread->isRunning();
+		this->setEnabled(true);
+	});
 }
 
+void FirmwareTransfer::updateProgress(float progress)
+{
+	progressDialog->setValue(uploadProgress);
+}

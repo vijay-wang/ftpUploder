@@ -31,7 +31,8 @@ public:
 	~FirmwareTransfer();
 
 signals:
-	void requestShowMessage(const QString &title, const QString &message);
+	void requestShowMessage(const QString type, const QString &title, const QString &message);
+	void rUpdateProgress(float progress);
 
 private slots:
 
@@ -41,7 +42,10 @@ private slots:
 
 	void on_btnUpgrade_clicked();
 
-	void showMessage(const QString title, const QString message);
+	void showMessage(const QString type, const QString title, const QString message);
+
+	void updateProgress(float progress);
+
 
 
 
@@ -49,10 +53,11 @@ private:
 	bool uploadFileToFTP(const QString localFilePath, const QString ftpUrl, const QString username, const QString password);
 	Ui::FirmwareTransfer *ui;
 	QSettings *configFile;
-	pthread_t uploadThread;
-	pthread_t progressThread;
+	QThread *uploadThread;
+	QThread *progressThread;
 	void upload_thread_cb();
 	void progress_thread_cb();
 	void startUpload(void);
+	QProgressDialog *progressDialog;
 };
 #endif // FIRMWARETRANSFER_H
