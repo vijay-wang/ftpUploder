@@ -9,8 +9,8 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    main.cpp \
-    firmwaretransfer.cpp
+    firmwaretransfer.cpp \
+    main.cpp
 
 HEADERS += \
     firmwaretransfer.h
@@ -20,8 +20,7 @@ INCLUDEPATH += curl-8.10.1_7-win64-mingw/curl-8.10.1_7-win64-mingw/include/
 LIBS += -LC:/Users/ww107/Documents/qt/FirmwareTransfer/curl-8.10.1_7-win64-mingw/curl-8.10.1_7-win64-mingw/lib libcurl
 LIBS += -LC:/Users/ww107/Documents/qt/FirmwareTransfer//curl-8.10.1_7-win64-mingw/curl-8.10.1_7-win64-mingw/bin -lcurl-x64
 
-FORMS += \
-    firmwaretransfer.ui
+FORMS +=
 
 TRANSLATIONS += \
     FirmwareTransfer_en_US.ts
