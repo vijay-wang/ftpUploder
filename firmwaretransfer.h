@@ -60,5 +60,18 @@ private:
 	void progress_thread_cb();
 	void startUpload(void);
 	QProgressDialog *progressDialog;
+	int getVersionFile(void);
+	bool deleteFile(const QString &filePath);
+	int compare_sdk_versions(const char *tmp_version_path, const char *filepath);
 };
+
+typedef enum {
+	VERSION_FAILED = -1,
+	VERSION_EQUAL = 1,
+	VERSION_NEWER,
+	VERSION_OLDER,
+
+} VerionRes;
+
+#define TMP_VERSION_FILE ".tmp_version"
 #endif // FIRMWARETRANSFER_H
