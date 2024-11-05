@@ -146,6 +146,7 @@ void FirmwareTransfer::startUpload(void)
 		progressThread->wait();  // 确保线程完全结束
 		qDebug() << "progressThread finished. isRunning:" << progressThread->isRunning();
 		this->setEnabled(true);
+		emit requestShowMessage("information", "infomation", "The device will restart to complete the upgrade. \nThe upgrade will take 5-10 minutes, please do not power off.");
 	});
 }
 
@@ -162,8 +163,7 @@ void FirmwareTransfer::upload_thread_cb()
 		emit requestShowMessage("warning", "ERROR", "Upload firmware failed");
 		qDebug("Upload firmware failed\n");
 	} else {
-		emit requestShowMessage("infomation", "infomation", "The device will restart to complete the upgrade. \nThe upgrade will take 5-10 minutes, please do not power off.");
-		qDebug("\n");
+		qDebug("Upload firmware success\n");
 	}
 	uploadProgress = 0;
 }
@@ -216,10 +216,9 @@ void FirmwareTransfer::on_btnUpgrade_clicked()
 		emit requestShowMessage("warning", "warning", "Get version failed");
 	}
 
-	const char *tmp_version_path = TMP_VERSION_FILE;
 	const char *filepath = ui->lineEditPath->text().toLatin1().data();
 
-	int v_sts = compare_sdk_versions(tmp_version_path, filepath);
+	int v_sts = compare_sdk_versions(TMP_VERSION_FILE, filepath);
 	if (v_sts == -1)
 		qDebug("Failed to extract SDK version\n");
 
@@ -412,3 +411,21 @@ bool FirmwareTransfer::deleteFile(const QString &filePath) {
 		return false;
 	}
 }
+
+void FirmwareTransfer::on_btnQeryVersion_clicked()
+{
+
+	if (getVersionFile() == 0) {
+		qDebug("File downloaded successfully.\n");
+	} else {
+		emit requestShowMessage("warning", "warning", "Get version failed");
+	}
+
+	char dev_version[8] = {0};
+	if (extract_version_from_tmpfile(TMP_VERSION_FILE, dev_version, 8)) {
+		emit requestShowMessage("warning", "warning", "Get version failed");
+	} else {
+		emit requestShowMessage("information", "information", dev_version);
+	}
+}
+

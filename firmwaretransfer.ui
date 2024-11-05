@@ -97,6 +97,13 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QPushButton" name="btnQeryVersion">
+        <property name="text">
+         <string>Qery version</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
     <item>
