@@ -186,7 +186,7 @@ void FirmwareTransfer::progress_thread_cb()
 		progressDialog->setValue(uploadProgress);
 		if (uploadProgress == 100)
 			break;
-		Sleep(50);
+		Sleep(100);
 	}
 }
 
