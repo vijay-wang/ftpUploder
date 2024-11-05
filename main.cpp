@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
 		}
 	}
 	FirmwareTransfer w;
-	QIcon icon("icon.png");
-	w.setWindowIcon(icon);
+	// QIcon icon("C:\\Users\\ww107\\Documents\\FirmwareTransfer\build\\Desktop_Qt_6_5_3_MinGW_64_bit-Debug\\debug\\icon.png");
+	// w.setWindowIcon(icon);
 	w.show();
 	return a.exec();
 }

@@ -136,6 +136,16 @@ void FirmwareTransfer::startUpload(void)
 	progressThread = QThread::create([this]() { this->progress_thread_cb(); });
 	progressThread->start();
 
+	connect(uploadThread, &QThread::finished, this, [this]() {
+		qDebug() << "uploadThread finished. isRunning:" << uploadThread->isRunning();
+	});
+
+	connect(progressThread, &QThread::finished, this, [this]() {
+		uploadThread->wait();  // 确保线程完全结束
+		progressThread->wait();  // 确保线程完全结束
+		qDebug() << "progressThread finished. isRunning:" << progressThread->isRunning();
+		this->setEnabled(true);
+	});
 }
 
 void FirmwareTransfer::upload_thread_cb()
@@ -169,9 +179,11 @@ void FirmwareTransfer::progress_thread_cb()
 	progressDialog->setCancelButton(nullptr);   		// 不显示按钮
 	progressDialog->setRange(0, 100);
 
-	connect(this, &FirmwareTransfer::rUpdateProgress, this, &FirmwareTransfer::updateProgress);
+	// connect(this, &FirmwareTransfer::rUpdateProgress, this, &FirmwareTransfer::updateProgress);
+
 	while (uploadThread->isRunning()) {
-		emit this->rUpdateProgress(uploadProgress);
+		// emit this->rUpdateProgress(uploadProgress);
+		progressDialog->setValue(uploadProgress);
 		if (uploadProgress == 100)
 			break;
 		Sleep(50);
@@ -182,16 +194,6 @@ void FirmwareTransfer::on_btnUpgrade_clicked()
 {
 	this->setEnabled(false);
 	startUpload();
-	connect(uploadThread, &QThread::finished, this, [this]() {
-		qDebug() << "uploadThread finished. isRunning:" << uploadThread->isRunning();
-	});
-
-	connect(progressThread, &QThread::finished, this, [this]() {
-		uploadThread->wait();  // 确保线程完全结束
-		progressThread->wait();  // 确保线程完全结束
-		qDebug() << "progressThread finished. isRunning:" << progressThread->isRunning();
-		this->setEnabled(true);
-	});
 }
 
 void FirmwareTransfer::updateProgress(float progress)
