@@ -50,6 +50,7 @@ private slots:
 
 
 private:
+	int ftpDownloadFile(const char *ftpUrl, const char *savePath, const char *username, const char *password, int port);
 	bool uploadFileToFTP(const QString localFilePath, const QString ftpUrl, const QString username, const QString password);
 	Ui::FirmwareTransfer *ui;
 	QSettings *configFile;

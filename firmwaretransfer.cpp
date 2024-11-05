@@ -131,21 +131,22 @@ void FirmwareTransfer::showMessage(const QString type, const QString title, cons
 
 void FirmwareTransfer::startUpload(void)
 {
-	uploadThread = QThread::create([this]() { this->upload_thread_cb(); });
-	uploadThread->start();
-	progressThread = QThread::create([this]() { this->progress_thread_cb(); });
-	progressThread->start();
+	// this->setEnabled(false);
+	// uploadThread = QThread::create([this]() { this->upload_thread_cb(); });
+	// uploadThread->start();
+	// progressThread = QThread::create([this]() { this->progress_thread_cb(); });
+	// progressThread->start();
 
-	connect(uploadThread, &QThread::finished, this, [this]() {
-		qDebug() << "uploadThread finished. isRunning:" << uploadThread->isRunning();
-	});
+	// connect(uploadThread, &QThread::finished, this, [this]() {
+	// 	qDebug() << "uploadThread finished. isRunning:" << uploadThread->isRunning();
+	// });
 
-	connect(progressThread, &QThread::finished, this, [this]() {
-		uploadThread->wait();  // 确保线程完全结束
-		progressThread->wait();  // 确保线程完全结束
-		qDebug() << "progressThread finished. isRunning:" << progressThread->isRunning();
-		this->setEnabled(true);
-	});
+	// connect(progressThread, &QThread::finished, this, [this]() {
+	// 	uploadThread->wait();  // 确保线程完全结束
+	// 	progressThread->wait();  // 确保线程完全结束
+	// 	qDebug() << "progressThread finished. isRunning:" << progressThread->isRunning();
+	// 	this->setEnabled(true);
+	// });
 }
 
 void FirmwareTransfer::upload_thread_cb()
@@ -190,13 +191,103 @@ void FirmwareTransfer::progress_thread_cb()
 	}
 }
 
+int FirmwareTransfer::getVersionFile(void)
+{
+	QString ip = ui->lineEditIP->text();
+	QString local_path = "./.tmp_version";
+	QString ftpUrl = "ftp://" + ip + "/etc/issue";
+	qDebug() << ftpUrl << "\n";
+	qDebug() << local_path << "\n";
+
+
+	return ftpDownloadFile(ftpUrl.toUtf8().data(), local_path.toUtf8().data(), "root", "unit123", 21);
+}
+
 void FirmwareTransfer::on_btnUpgrade_clicked()
 {
-	this->setEnabled(false);
+
+	if (getVersionFile()) {
+		qDebug("File downloaded successfully.\n");
+	} else {
+		emit requestShowMessage("warning", "warning", "Get version failed");
+	}
+
 	startUpload();
 }
 
 void FirmwareTransfer::updateProgress(float progress)
 {
 	progressDialog->setValue(uploadProgress);
+}
+
+// 回调函数，用于写入下载的数据
+size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+	size_t written = fwrite(ptr, size, nmemb, stream);
+	return written;
+}
+
+int FirmwareTransfer::ftpDownloadFile(const char *ftpUrl, const char *savePath, const char *username, const char *password, int port) {
+	CURL *curl;
+	CURLcode res;
+	FILE *file;
+
+	// 打开文件用于写入（确保文件指针有效）
+	file = fopen(savePath, "wb");
+	if (!file) {
+		fprintf(stderr, "Failed to open file: %s\n", savePath);
+		return 1;
+	}
+
+	// 全局初始化
+	if (curl_global_init(CURL_GLOBAL_DEFAULT) != 0) {
+		fprintf(stderr, "curl_global_init() failed\n");
+		fclose(file);
+		return 1;
+	}
+
+	curl = curl_easy_init();
+
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	if (!curl) {
+		fprintf(stderr, "Failed to initialize CURL.\n");
+		fclose(file);
+		curl_global_cleanup();
+		return 1;
+	}
+
+	// 设置 URL
+	curl_easy_setopt(curl, CURLOPT_URL, ftpUrl);
+
+	// 设置端口号
+	curl_easy_setopt(curl, CURLOPT_PORT, port);
+
+	// 设置用户名和密码
+	char userpwd[128];
+	snprintf(userpwd, sizeof(userpwd), "%s:%s", username, password);
+	curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+
+	// 禁用 EPSV（使用 PASV 模式）
+	curl_easy_setopt(curl, CURLOPT_FTP_USE_EPSV, 0L);
+
+	// 设置写入文件的回调函数
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+
+	// 执行文件下载
+	res = curl_easy_perform(curl);
+
+	// 检查结果
+	if (res != CURLE_OK) {
+		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		fclose(file);
+		curl_easy_cleanup(curl);
+		curl_global_cleanup();
+		return 1;
+	}
+
+	// 释放资源
+	curl_easy_cleanup(curl);
+	fclose(file);
+	curl_global_cleanup();
+	return 0;
 }
