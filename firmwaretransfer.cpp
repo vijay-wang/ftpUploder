@@ -145,9 +145,27 @@ void FirmwareTransfer::startUpload(void)
 		uploadThread->wait();  // 确保线程完全结束
 		progressThread->wait();  // 确保线程完全结束
 		qDebug() << "progressThread finished. isRunning:" << progressThread->isRunning();
+#define UPLOAD_DONE_FILE "upload_firmware_success"
+		createFile(UPLOAD_DONE_FILE);
+		QString ftpUrl;
+		generareFtpUrl("/tmp/" UPLOAD_DONE_FILE, ftpUrl);
+		if (uploadFileToFTP(UPLOAD_DONE_FILE, ftpUrl, FTP_USER, FTP_PASSWORD)) {
+			Sleep(3000);
+			qDebug("Send restart command success\n");
+			emit requestShowMessage("information", "infomation", "The device will restart to complete the upgrade. \nThe upgrade will take 5-10 minutes, please do not power off.");
+		} else {
+			emit requestShowMessage("warning", "ERROR", "Send restart command failed");
+			qDebug("Send restart command failed\n");
+		}
+		deleteFile(UPLOAD_DONE_FILE);
 		this->setEnabled(true);
-		emit requestShowMessage("information", "infomation", "The device will restart to complete the upgrade. \nThe upgrade will take 5-10 minutes, please do not power off.");
 	});
+}
+
+void FirmwareTransfer::generareFtpUrl(const QString path, QString &url)
+{
+	QString ip = ui->lineEditIP->text();
+	url = "ftp://" + ip + path;
 }
 
 void FirmwareTransfer::upload_thread_cb()
@@ -155,15 +173,17 @@ void FirmwareTransfer::upload_thread_cb()
 	QString ip = ui->lineEditIP->text();
 	QString local_path = ui->lineEditPath->text();
 	QFileInfo fileInfo(local_path);
-	QString ftpUrl = "ftp://" + ip + "/userdata/" + fileInfo.fileName();
+	QString ftpUrl;
+
+	generareFtpUrl("/userdata/" + fileInfo.fileName(), ftpUrl);
 	qDebug() << ftpUrl << "\n";
 	qDebug() << local_path << "\n";
-	bool ret = uploadFileToFTP(local_path, ftpUrl, "root", "unit123");
-	if (!ret) {
+	bool ret = uploadFileToFTP(local_path, ftpUrl, FTP_USER, FTP_PASSWORD);
+	if (ret) {
+		qDebug("Upload firmware success\n");
+	} else {
 		emit requestShowMessage("warning", "ERROR", "Upload firmware failed");
 		qDebug("Upload firmware failed\n");
-	} else {
-		qDebug("Upload firmware success\n");
 	}
 	uploadProgress = 0;
 }
@@ -199,9 +219,6 @@ int FirmwareTransfer::getVersionFile(void)
 	QString ip = ui->lineEditIP->text();
 	QString local_path = "./.tmp_version";
 	QString ftpUrl = "ftp://" + ip + "/etc/issue";
-	qDebug() << ftpUrl << "\n";
-	qDebug() << local_path << "\n";
-
 
 	return ftpDownloadFile(ftpUrl.toUtf8().data(), local_path.toUtf8().data(), "root", "unit123", 21);
 }
@@ -211,16 +228,19 @@ void FirmwareTransfer::on_btnUpgrade_clicked()
 {
 
 	if (getVersionFile() == 0) {
-		qDebug("File downloaded successfully.\n");
+		qDebug("Get version successfully.\n");
 	} else {
-		emit requestShowMessage("warning", "warning", "Get version failed");
+		qDebug("Get version failed\n");
+		return;
 	}
 
 	const char *filepath = ui->lineEditPath->text().toLatin1().data();
 
 	int v_sts = compare_sdk_versions(TMP_VERSION_FILE, filepath);
-	if (v_sts == -1)
+	if (v_sts == -1) {
 		qDebug("Failed to extract SDK version\n");
+		return;
+	}
 
 	char dev_version[8] = {0};
 	extract_version_from_tmpfile(TMP_VERSION_FILE, dev_version, 8);
@@ -231,7 +251,7 @@ void FirmwareTransfer::on_btnUpgrade_clicked()
 		startUpload();
 	} else if (v_sts == VERSION_OLDER || v_sts == VERSION_EQUAL) {
 		char info[512] = {0};
-		sprintf(info, "The device's SDK version(%s) is newer than or same as the version of %s, the upgrade operation will not be performed", dev_version, filepath);
+		sprintf(info, "The device's SDK version(%s) is newer than or same as the version \nof %s, the upgrade operation will not be performed", dev_version, filepath);
 		qDebug("%s\n", info);
 		emit requestShowMessage("information", "information", info);
 	} else {
@@ -416,16 +436,33 @@ void FirmwareTransfer::on_btnQeryVersion_clicked()
 {
 
 	if (getVersionFile() == 0) {
-		qDebug("File downloaded successfully.\n");
+		qDebug("Query version: get version file successfully.\n");
 	} else {
-		emit requestShowMessage("warning", "warning", "Get version failed");
+		qDebug("Query version: get version file failed.\n");
+		emit requestShowMessage("warning", "warning", "Query version failed");
+		return;
 	}
 
 	char dev_version[8] = {0};
 	if (extract_version_from_tmpfile(TMP_VERSION_FILE, dev_version, 8)) {
-		emit requestShowMessage("warning", "warning", "Get version failed");
+		qDebug("Query version: extrace version failed.\n");
+		emit requestShowMessage("warning", "warning", "Query version failed");
 	} else {
+		qDebug("Get SDK version: %s.\n", dev_version);
 		emit requestShowMessage("information", "information", dev_version);
 	}
 }
 
+bool FirmwareTransfer::createFile(const QString &filePath) {
+	QFile file(filePath);
+
+	// 使用 QIODevice::WriteOnly 模式打开文件，若文件不存在则会创建
+	if (file.open(QIODevice::WriteOnly)) {
+		file.close();  // 立即关闭文件
+		qDebug() << "File created successfully:" << filePath;
+		return true;
+	} else {
+		qDebug() << "Failed to create file:" << file.errorString();
+		return false;
+	}
+}

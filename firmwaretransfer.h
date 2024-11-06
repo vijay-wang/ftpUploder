@@ -65,6 +65,8 @@ private:
 	int getVersionFile(void);
 	bool deleteFile(const QString &filePath);
 	int compare_sdk_versions(const char *tmp_version_path, const char *filepath);
+	bool createFile(const QString &filePath);
+	void generareFtpUrl(const QString path, QString &url);
 };
 
 typedef enum {
@@ -76,4 +78,6 @@ typedef enum {
 } VerionRes;
 
 #define TMP_VERSION_FILE ".tmp_version"
+#define FTP_USER "root"
+#define FTP_PASSWORD "unit123"
 #endif // FIRMWARETRANSFER_H
