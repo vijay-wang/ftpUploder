@@ -52,6 +52,7 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext &context, con
 
 int main(int argc, char *argv[])
 {
+	int ret;
 	QApplication a(argc, argv);
 
 	QTranslator translator;
@@ -68,5 +69,7 @@ int main(int argc, char *argv[])
 	QIcon icon("./icon/UNIT.ico");
 	w.setWindowIcon(icon);
 	w.show();
-	return a.exec();
+	ret = a.exec();
+	logFile.close();
+	return ret;
 }

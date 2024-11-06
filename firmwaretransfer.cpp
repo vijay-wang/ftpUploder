@@ -239,6 +239,7 @@ void FirmwareTransfer::on_btnUpgrade_clicked()
 	int v_sts = compare_sdk_versions(TMP_VERSION_FILE, filepath);
 	if (v_sts == -1) {
 		qDebug("Failed to extract SDK version\n");
+		emit requestShowMessage("information", "information", "Extract version infomation failed, please check your firmware path");
 		return;
 	}
 
@@ -247,7 +248,7 @@ void FirmwareTransfer::on_btnUpgrade_clicked()
 	deleteFile(TMP_VERSION_FILE);
 
 	if (v_sts == VERSION_NEWER) {
-		qDebug("Stat to upgrade firmware\n");
+		qDebug("Start to upgrade firmware\n");
 		startUpload();
 	} else if (v_sts == VERSION_OLDER || v_sts == VERSION_EQUAL) {
 		char info[512] = {0};
@@ -255,7 +256,7 @@ void FirmwareTransfer::on_btnUpgrade_clicked()
 		qDebug("%s\n", info);
 		emit requestShowMessage("information", "information", info);
 	} else {
-		emit requestShowMessage("information", "information", "Extract version infomation failed, please check your firmware path");
+		emit requestShowMessage("information", "information", "Extract version information failed, please check your firmware path");
 	}
 }
 
